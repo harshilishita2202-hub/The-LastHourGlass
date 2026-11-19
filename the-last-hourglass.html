@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>THE LAST HOURGLASS – VR & Desktop Prototype</title>
+
+  <!-- A-Frame VR Engine (1.6.0 with CDN fallback) -->
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <script>
+    if (typeof AFRAME === 'undefined') {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/aframe@1.6.0/dist/aframe-master.min.js"><\/script>');
+    }
+  </script>
+
+  <style>
+    :root {
+      --gold: #f5c842;
+      --gold-dark: #b8870a;
+      --bg-dark: rgba(8, 12, 22, 0.88);
+      --border-gold: rgba(236, 195, 112, 0.55);
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #02040a;
+      color: #fff;
+    }
+
+    a-scene {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Top HUD */
+    #top-hud {
+      position: fixed;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9998;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      pointer-events: none;
+    }
+
+    .hud-title {
+      background: rgba(15, 10, 5, 0.9);
+      border: 1px solid var(--border-gold);
+      border-radius: 20px;
+      padding: 6px 18px;
+      color: var(--gold);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    }
+
+    .hud-stat {
+      background: rgba(15, 10, 5, 0.9);
+      border: 1px solid var(--border-gold);
+      border-radius: 20px;
+      padding: 6px 14px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    }
+
+    .hud-stat span {
+      color: var(--gold);
+    }
+
+    /* Bottom Story / Dialog Card */
+    #bottom-ui {
+      position: fixed;
+      left: 16px;
+      right: 16px;
+      bottom: 16px;
+      z-index: 9999;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #story-caption {
+      max-width: 720px;
+      width: 100%;
+      padding: 14px 20px;
+      background: var(--bg-dark);
+      border: 1px solid var(--border-gold);
+      border-radius: 12px;
+      text-align: center;
+      line-height: 1.5;
+      font-size: 14px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(8px);
+    }
+
+    #story-caption strong {
+      color: var(--gold);
+      font-size: 15px;
+      letter-spacing: 1px;
+      display: inline-block;
+      margin-bottom: 4px;
+    }
+
+    #story-caption small {
+      display: block;
+      margin-top: 6px;
+      color: #9ba3b8;
+      font-size: 12px;
+    }
+
+    #status-bar {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      font-size: 13px;
+      text-shadow: 0 2px 4px #000;
+    }
+
+    /* Controls Hint */
+    #controls-hint {
+      position: fixed;
+      bottom: 16px;
+      left: 16px;
+      z-index: 9998;
+      background: rgba(10, 14, 24, 0.75);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 11px;
+      color: #c5cde0;
+      line-height: 1.6;
+      pointer-events: none;
+    }
+
+    #controls-hint b {
+      color: var(--gold);
+    }
+
+    /* Crosshair */
+    #crosshair {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 6px;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9997;
+      transition: transform 0.15s, background 0.15s;
+    }
+
+    #crosshair.hover {
+      transform: translate(-50%, -50%) scale(2.2);
+      background: var(--gold);
+    }
+
+    /* Fullscreen Fade Overlay */
+    #fade-overlay {
+      position: fixed;
+      inset: 0;
+      background: #02040a;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 10000;
+      transition: opacity 0.65s ease;
+    }
+
+    /* Toasts */
+    #toasts {
+      position: fixed;
+      top: 65px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+      align-items: center;
+    }
+
+    .toast {
+      background: rgba(18, 22, 34, 0.95);
+      border: 1px solid var(--gold);
+      color: #fff;
+      padding: 8px 18px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+      animation: toastIn 0.3s ease, toastOut 0.4s ease 2.7s forwards;
+    }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes toastOut {
+      from { opacity: 1; transform: translateY(0); }
+      to   { opacity: 0; transform: translateY(-10px); }
+    }
+
+    /* Loading Screen */
+    #loading-screen {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at center, #181d2f 0%, #060912 100%);
+      z-index: 10001;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      transition: opacity 0.6s ease;
+    }
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 3px solid rgba(245, 200, 66, 0.2);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      color: var(--gold);
+      text-transform: uppercase;
+    }
+
+    @media (max-width: 600px) {
+      #story-caption { font-size: 13px; padding: 10px 14px; }
+      #controls-hint { display: none; }
+      .hud-title { font-size: 11px; padding: 5px 12px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Loading Screen -->
+  <div id="loading-screen">
+    <div class="spinner"></div>
+    <div class="loading-title">The Last Hourglass</div>
+  </div>
+
+  <!-- Fade Transition Layer -->
+  <div id="fade-overlay"></div>
+
+  <!-- Notification Toasts -->
+  <div id="toasts"></div>
+
+  <!-- Crosshair for Desktop Center Aim -->
+  <div id="crosshair"></div>
+
+  <!-- Top Bar HUD -->
+  <div id="top-hud">
+    <div class="hud-title">⌛ The Last Hourglass</div>
+    <div class="hud-stat">🪙 Gold: <span id="gold-display">50</span></div>
+  </div>
+
+  <!-- Desktop Controls Reminder -->
+  <div id="controls-hint">
+    <b>Desktop:</b> WASD to move • Mouse to look • Click to interact<br>
+    <b>VR:</b> Left stick to move • Laser trigger / gaze to select
+  </div>
+
+  <!-- Bottom Narrative & Quest Card -->
+  <div id="bottom-ui">
+    <div id="story-caption">
+      <strong>AARAV'S BEDROOM</strong><br>
+      Another late night alone in your room. A strange golden hourglass sits glowing on the edge of your desk.<br>
+      <small>Click or tap the hourglass to inspect it.</small>
+    </div>
+    <div id="status-bar">
+      <span>🪙 Gold: <b id="prototype-gold" style="color:var(--gold);">50</b></span>
+      <span>🍎 Quest: <b id="quest-progress" style="color:#ff8b7b;">Talk to farmer</b></span>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       3D SCENE (A-FRAME)
+       ══════════════════════════════════════════════════════════════════ -->
+  <a-scene id="main-scene" renderer="antialias: true; colorManagement: true;">
+
+    <!-- Sky -->
+    <a-sky id="prototype-sky" color="#080d1b"></a-sky>
+
+    <!-- Camera Rig -->
+    <a-entity id="player-rig" position="0 0 0">
+      <a-camera id="player-camera" position="0 1.6 0" look-controls="pointerLockEnabled: false" wasd-controls="acceleration: 22">
+        <!-- Gaze Cursor for VR -->
+        <a-cursor id="prototype-gaze" color="#f5d58a" fuse="true" fuse-timeout="1200" raycaster="objects: .interactive; far: 10" visible="false" scale="0.65 0.65 0.65"></a-cursor>
+      </a-camera>
+
+      <!-- VR Laser Controllers -->
+      <a-entity id="left-ctrl" laser-controls="hand: left" raycaster="objects: .interactive; far: 12; showLine: true" line="color: #f5d58a; opacity: 0.8"></a-entity>
+      <a-entity id="right-ctrl" laser-controls="hand: right" raycaster="objects: .interactive; far: 12; showLine: true" line="color: #f5d58a; opacity: 0.8"></a-entity>
+    </a-entity>
+
+    <!-- Desktop Mouse Raycaster -->
+    <a-entity id="prototype-mouse-cursor" cursor="rayOrigin: mouse; fuse: false" raycaster="objects: .interactive; far: 14"></a-entity>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         SCENE 1: AARAV'S BEDROOM (PRESENT DAY)
+         ══════════════════════════════════════════════════════════════════ -->
+    <a-entity id="present-world">
+      <!-- Lighting -->
+      <a-entity light="type: ambient; color: #65708c; intensity: 0.5"></a-entity>
+      <a-entity light="type: directional; color: #9ba9d4; intensity: 0.7" position="-3 7 4"></a-entity>
+      <a-entity light="type: point; color: #42a5ff; intensity: 0.8; distance: 8" position="0.45 2.0 -4.0"></a-entity>
+
+      <!-- Floor & Room Shell -->
+      <a-plane position="0 0 -3" rotation="-90 0 0" width="10" height="10" material="color: #202330; roughness: 1"></a-plane>
+      <a-box id="bedroom-back-wall" position="0 2.5 -7.8" scale="10 5 0.2" material="color: #151a2a; roughness: 0.88"></a-box>
+      <a-box id="bedroom-left-wall" position="-5 2.5 -3" scale="0.2 5 10" material="color: #1b2030; roughness: 0.88"></a-box>
+      <a-box id="bedroom-right-wall" position="5 2.5 -3" scale="0.2 5 10" material="color: #171d2b; roughness: 0.88"></a-box>
+      <a-box id="bedroom-ceiling" position="0 5 -3" scale="10 0.15 10" material="color: #111624; roughness: 0.88"></a-box>
+
+      <!-- Bed -->
+      <a-box id="bed-frame" position="-3.1 0.35 -3.2" scale="2.5 0.45 3.0" material="color: #342d3b; roughness: 0.88"></a-box>
+      <a-box id="bed-mattress" position="-3.1 0.62 -3.2" scale="2.4 0.22 2.9" material="color: #6e5263; roughness: 0.88"></a-box>
+      <a-box id="bed-pillow" position="-3.1 0.78 -4.25" scale="1.0 0.18 0.55" material="color: #c8bdc7; roughness: 0.88"></a-box>
+
+      <!-- Gaming Desk & PC Setup -->
+      <a-box id="desk-top" position="0.6 1.0 -4.0" scale="3.0 0.14 1.0" material="color: #49372d; roughness: 0.88"></a-box>
+      <a-box id="desk-leg-a" position="-0.65 0.48 -4.0" scale="0.12 0.95 0.12" material="color: #292631; roughness: 0.88"></a-box>
+      <a-box id="desk-leg-b" position="1.85 0.48 -4.0" scale="0.12 0.95 0.12" material="color: #292631; roughness: 0.88"></a-box>
+      <a-box id="monitor-frame" position="0.45 1.75 -4.30" scale="1.55 1.0 0.12" material="color: #080b12; roughness: 0.88"></a-box>
+      <a-box id="monitor-screen" position="0.45 1.75 -4.225" scale="1.38 0.82 0.025" material="color: #173353; roughness: 0.88"></a-box>
+      <a-box id="monitor-glow" position="0.45 1.75 -4.20" scale="0.85 0.035 0.02" material="color: #42a5ff; emissive: #1d6ea8; emissiveIntensity: 0.6"></a-box>
+      <a-box id="keyboard" position="0.45 1.10 -3.65" scale="0.9 0.04 0.28" material="color: #151824; roughness: 0.88"></a-box>
+
+      <!-- Chair -->
+      <a-cylinder position="0.0 0.65 -2.55" radius="0.5" height="0.12" color="#242a38"></a-cylinder>
+      <a-cylinder position="0.0 1.1 -2.55" radius="0.12" height="0.9" color="#333849"></a-cylinder>
+      <a-box position="0 1.48 -2.55" width="0.85" height="0.9" depth="0.18" color="#6b293c"></a-box>
+
+      <!-- Wall Clock (11:47 PM) -->
+      <a-cylinder position="-3.6 3.0 -7.65" rotation="90 0 0" radius="0.48" height="0.08" color="#c7b58d"></a-cylinder>
+      <a-circle position="-3.6 3.0 -7.59" rotation="0 0 0" radius="0.39" color="#efe5cf"></a-circle>
+      <a-box id="clock-hour-hand" position="-3.6 3.02 -7.535" scale="0.035 0.19 0.025" color="#30251f"></a-box>
+      <a-box id="clock-minute-hand" position="-3.55 3.10 -7.53" rotation="0 0 35" scale="0.025 0.29 0.025" color="#30251f"></a-box>
+      <a-text value="11:47" position="-3.6 2.58 -7.55" align="center" color="#30251f" width="1.1" shader="msdf"></a-text>
+
+      <!-- The Mysterious Hourglass (Clickable) -->
+      <a-entity id="mysterious-hourglass" position="1.55 1.32 -3.45">
+        <a-sphere id="hourglass-hitbox" class="interactive" data-action="activate-hourglass" position="0 0 0" radius="0.62" material="color: #ffffff; transparent: true; opacity: 0.01"></a-sphere>
+        <a-cylinder position="0 0.53 0" radius="0.32" height="0.10" color="#b78a3c"></a-cylinder>
+        <a-cylinder position="0 -0.53 0" radius="0.32" height="0.10" color="#b78a3c"></a-cylinder>
+        <a-sphere position="0 0.27 0" radius="0.28" scale="1 0.82 0.82" material="color: #d7c7a0; transparent: true; opacity: 0.28; metalness: 0.35"></a-sphere>
+        <a-sphere position="0 -0.27 0" radius="0.28" scale="1 0.82 0.82" material="color: #d7c7a0; transparent: true; opacity: 0.28; metalness: 0.35"></a-sphere>
+        <a-cylinder position="0 0 0" radius="0.055" height="0.38" color="#f4c45b" material="color: #f4c45b; emissive: #d88b19; emissiveIntensity: 0.8"></a-cylinder>
+        <a-torus position="0 0 0" radius="0.39" radius-tubular="0.035" color="#f3c86a"></a-torus>
+      </a-entity>
+      <a-text value="THE HOURGLASS" position="1.55 2.15 -3.45" align="center" color="#ffdf91" width="2.3" shader="msdf"></a-text>
+
+      <!-- Dormant Time Portal -->
+      <a-entity id="time-portal" position="0 1.9 -7.55" visible="false" scale="0.05 0.05 0.05">
+        <a-torus position="0 0 0" radius="1.35" radius-tubular="0.10" material="color: #e9bd64; emissive: #c27a27; emissiveIntensity: 1.1; metalness: 0.35"></a-torus>
+        <a-circle position="0 0 0.015" radius="1.25" material="color: #254c78; transparent: true; opacity: 0.62; emissive: #173e70; emissiveIntensity: 0.6; side: double"></a-circle>
+      </a-entity>
+    </a-entity>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         SCENE 2: MEDIEVAL VILLAGE OF ELDORIA
+         ══════════════════════════════════════════════════════════════════ -->
+    <a-entity id="village-world" visible="false">
+      <!-- Lighting -->
+      <a-entity light="type: ambient; color: #a9b7d0; intensity: 0.75"></a-entity>
+      <a-entity light="type: directional; color: #ffd6a0; intensity: 1.0" position="-3 7 4"></a-entity>
+      <a-entity light="type: point; color: #ffb15c; intensity: 0.8; distance: 14" position="0 2.5 -3"></a-entity>
+
+      <!-- Ground Terrain & Path -->
+      <a-plane position="0 -0.02 -4" rotation="-90 0 0" width="34" height="34" material="color: #40523b; roughness: 1"></a-plane>
+      <a-plane position="0 0.005 -5" rotation="-90 0 0" width="3.2" height="22" material="color: #8e7656; roughness: 1"></a-plane>
+
+      <!-- Village Houses -->
+      <a-entity position="-5.0 0 -3.5">
+        <a-box position="0 1.25 0" scale="3.4 2.5 2.8" material="color: #805c43; roughness: 0.88"></a-box>
+        <a-cone position="0 3.05 0" radius-bottom="2.25" radius-top="0.05" height="1.5" color="#49333b"></a-cone>
+        <a-box position="0 0.85 -1.43" scale="0.65 1.65 0.08" material="color: #39271f; roughness: 0.88"></a-box>
+        <a-box position="-0.9 1.65 -1.46" scale="0.48 0.48 0.06" material="color: #f2b96b; emissive: #a95b21; emissiveIntensity: 0.45"></a-box>
+        <a-box position="0.9 1.65 -1.46" scale="0.48 0.48 0.06" material="color: #f2b96b; emissive: #a95b21; emissiveIntensity: 0.45"></a-box>
+      </a-entity>
+
+      <a-entity position="5.0 0 -4.8">
+        <a-box position="0 1.25 0" scale="3.4 2.5 2.8" material="color: #76513c; roughness: 0.88"></a-box>
+        <a-cone position="0 3.05 0" radius-bottom="2.25" radius-top="0.05" height="1.5" color="#49333b"></a-cone>
+        <a-box position="0 0.85 -1.43" scale="0.65 1.65 0.08" material="color: #39271f; roughness: 0.88"></a-box>
+        <a-box position="-0.9 1.65 -1.46" scale="0.48 0.48 0.06" material="color: #f2b96b; emissive: #a95b21; emissiveIntensity: 0.45"></a-box>
+        <a-box position="0.9 1.65 -1.46" scale="0.48 0.48 0.06" material="color: #f2b96b; emissive: #a95b21; emissiveIntensity: 0.45"></a-box>
+      </a-entity>
+
+      <a-entity position="-5.6 0 -10.0">
+        <a-box position="0 1.25 0" scale="3.4 2.5 2.8" material="color: #805c43; roughness: 0.88"></a-box>
+        <a-cone position="0 3.05 0" radius-bottom="2.25" radius-top="0.05" height="1.5" color="#49333b"></a-cone>
+        <a-box position="0 0.85 -1.43" scale="0.65 1.65 0.08" material="color: #39271f; roughness: 0.88"></a-box>
+      </a-entity>
+
+      <a-entity position="5.8 0 -10.5">
+        <a-box position="0 1.25 0" scale="3.4 2.5 2.8" material="color: #76513c; roughness: 0.88"></a-box>
+        <a-cone position="0 3.05 0" radius-bottom="2.25" radius-top="0.05" height="1.5" color="#49333b"></a-cone>
+        <a-box position="0 0.85 -1.43" scale="0.65 1.65 0.08" material="color: #39271f; roughness: 0.88"></a-box>
+      </a-entity>
+
+      <!-- Orchard Trees -->
+      <a-entity position="-3.0 0 -6.0">
+        <a-cylinder position="0 0.85 0" radius="0.16" height="1.7" color="#5b3929"></a-cylinder>
+        <a-sphere position="0 2.0 0" radius="0.95" color="#3f6843"></a-sphere>
+      </a-entity>
+      <a-entity position="-4.2 0 -8.5">
+        <a-cylinder position="0 0.85 0" radius="0.16" height="1.7" color="#5b3929"></a-cylinder>
+        <a-sphere position="0 2.0 0" radius="0.95" color="#507647"></a-sphere>
+      </a-entity>
+      <a-entity position="3.3 0 -7.2">
+        <a-cylinder position="0 0.85 0" radius="0.16" height="1.7" color="#5b3929"></a-cylinder>
+        <a-sphere position="0 2.0 0" radius="0.95" color="#3f6843"></a-sphere>
+      </a-entity>
+      <a-entity position="4.4 0 -10.0">
+        <a-cylinder position="0 0.85 0" radius="0.16" height="1.7" color="#5b3929"></a-cylinder>
+        <a-sphere position="0 2.0 0" radius="0.95" color="#507647"></a-sphere>
+      </a-entity>
+      <a-entity position="-2.8 0 -11.2">
+        <a-cylinder position="0 0.85 0" radius="0.16" height="1.7" color="#5b3929"></a-cylinder>
+        <a-sphere position="0 2.0 0" radius="0.95" color="#3f6843"></a-sphere>
+      </a-entity>
+      <a-entity position="2.2 0 -12.0">
+        <a-cylinder position="0 0.85 0" radius="0.16" height="1.7" color="#5b3929"></a-cylinder>
+        <a-sphere position="0 2.0 0" radius="0.95" color="#507647"></a-sphere>
+      </a-entity>
+
+      <!-- Distant Kingdom Text -->
+      <a-text value="ELDORIA" position="0 4.2 -11.5" align="center" color="#fff0d1" width="5" shader="msdf"></a-text>
+
+      <!-- Farmer NPC -->
+      <a-entity id="farmer-npc" position="-1.5 0 -2.8">
+        <a-cylinder position="0 0.95 0" radius="0.34" height="1.15" color="#6f7d49"></a-cylinder>
+        <a-sphere position="0 1.72 0" radius="0.29" color="#d7a477"></a-sphere>
+        <a-cone position="0 2.03 0" radius-bottom="0.43" radius-top="0.04" height="0.35" color="#6b4630"></a-cone>
+        <a-cylinder position="0 0.32 0" radius="0.12" height="0.58" color="#40312b"></a-cylinder>
+        <a-sphere id="farmer-interaction-target" class="interactive" data-action="talk-farmer" position="0 1.0 0.08" radius="0.68" material="color: #ffffff; transparent: true; opacity: 0.01"></a-sphere>
+        <a-text value="FARMER" position="0 2.45 0" align="center" color="#fff0d1" width="1.5" shader="msdf"></a-text>
+      </a-entity>
+
+      <!-- Orchard Sign -->
+      <a-entity position="0 0 -5.2">
+        <a-box position="0 1.2 0" width="1.55" height="0.72" depth="0.12" color="#68452e"></a-box>
+        <a-text value="APPLE ORCHARD" position="0 1.16 0.08" align="center" color="#f5dfb6" width="1.45" shader="msdf"></a-text>
+        <a-cylinder position="0 0.55 0" radius="0.07" height="1.1" color="#503522"></a-cylinder>
+      </a-entity>
+
+      <!-- Three Collectible Apples -->
+      <a-entity id="apple-pickup-1" position="-1.4 0.65 -6.3">
+        <a-sphere id="apple-1" class="interactive" data-action="collect-apple" data-apple-id="apple-1" position="0 0 0" radius="0.22" color="#cf4035" material="roughness: 0.5">
+          <a-cylinder position="0 0.24 0" radius="0.025" height="0.13" color="#5d3a24"></a-cylinder>
+          <a-sphere position="0.09 0.20 0" radius="0.075" scale="1.4 0.45 0.8" color="#538044"></a-sphere>
+        </a-sphere>
+        <a-text value="APPLE 1" position="0 0.55 0" align="center" color="#ffe9c3" width="1.15" shader="msdf"></a-text>
+      </a-entity>
+
+      <a-entity id="apple-pickup-2" position="1.2 0.65 -7.0">
+        <a-sphere id="apple-2" class="interactive" data-action="collect-apple" data-apple-id="apple-2" position="0 0 0" radius="0.22" color="#cf4035" material="roughness: 0.5">
+          <a-cylinder position="0 0.24 0" radius="0.025" height="0.13" color="#5d3a24"></a-cylinder>
+          <a-sphere position="0.09 0.20 0" radius="0.075" scale="1.4 0.45 0.8" color="#538044"></a-sphere>
+        </a-sphere>
+        <a-text value="APPLE 2" position="0 0.55 0" align="center" color="#ffe9c3" width="1.15" shader="msdf"></a-text>
+      </a-entity>
+
+      <a-entity id="apple-pickup-3" position="0.1 0.65 -9.0">
+        <a-sphere id="apple-3" class="interactive" data-action="collect-apple" data-apple-id="apple-3" position="0 0 0" radius="0.22" color="#cf4035" material="roughness: 0.5">
+          <a-cylinder position="0 0.24 0" radius="0.025" height="0.13" color="#5d3a24"></a-cylinder>
+          <a-sphere position="0.09 0.20 0" radius="0.075" scale="1.4 0.45 0.8" color="#538044"></a-sphere>
+        </a-sphere>
+        <a-text value="APPLE 3" position="0 0.55 0" align="center" color="#ffe9c3" width="1.15" shader="msdf"></a-text>
+      </a-entity>
+
+      <!-- Quest Return Guide -->
+      <a-text value="RETURN HERE AFTER COLLECTING 3 APPLES" position="-1.5 2.85 -2.8" align="center" color="#f9d99e" width="3.0" shader="msdf"></a-text>
+    </a-entity>
+
+  </a-scene>
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       GAMEPLAY LOGIC
+       ══════════════════════════════════════════════════════════════════ -->
+  <script>
+    'use strict';
+
+    (() => {
+      const STARTING_GOLD = 50;
+      const QUEST_REWARD  = 30;
+      const APPLE_COUNT   = 3;
+
+      const GameState = {
+        phase: 'present', // present | travelling | village | quest | completed
+        gold: STARTING_GOLD,
+        questAccepted: false,
+        applesCollected: 0,
+        questCompleted: false,
+        rewardPaid: false
+      };
+
+      /* ── UI Helpers ── */
+      function showToast(message, icon = '⌛') {
+        const host = document.getElementById('toasts');
+        if (!host) return;
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = `${icon} ${message}`;
+        host.appendChild(toast);
+        setTimeout(() => toast.remove(), 3100);
+      }
+
+      function updateHUD() {
+        const goldEl = document.getElementById('gold-display');
+        const protoGold = document.getElementById('prototype-gold');
+        if (goldEl) goldEl.textContent = String(GameState.gold);
+        if (protoGold) protoGold.textContent = String(GameState.gold);
+
+        const progressEl = document.getElementById('quest-progress');
+        if (progressEl) {
+          if (GameState.questCompleted) {
+            progressEl.textContent = 'Quest Complete';
+            progressEl.style.color = '#4ade80';
+          } else if (GameState.questAccepted) {
+            progressEl.textContent = `${GameState.applesCollected}/${APPLE_COUNT} Apples`;
+            progressEl.style.color = '#f5c842';
+          } else {
+            progressEl.textContent = 'Talk to farmer';
+            progressEl.style.color = '#ff8b7b';
+          }
+        }
+      }
+
+      function setStory(title, body, hint = '') {
+        const panel = document.getElementById('story-caption');
+        if (panel) {
+          panel.innerHTML = `<strong>${escapeHtml(title)}</strong><br>${escapeHtml(body)}${hint ? `<br><small>${escapeHtml(hint)}</small>` : ''}`;
+        }
+      }
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, char => ({
+          '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[char]);
+      }
+
+      function fadeTransition(callback, duration = 1800) {
+        const fade = document.getElementById('fade-overlay');
+        if (!fade) { callback(); return; }
+        fade.style.opacity = '1';
+        setTimeout(() => {
+          callback();
+          setTimeout(() => { fade.style.opacity = '0'; }, 200);
+        }, duration);
+      }
+
+      /* ── Scene 1: Hourglass Activation ── */
+      function activateHourglass() {
+        if (GameState.phase !== 'present') return;
+        GameState.phase = 'travelling';
+        showToast('The hourglass is awakening…', '⌛');
+        setStory('THE HOURGLASS AWAKENS', 'The clock begins to run backwards. Golden sand rises through the glass.', 'Hold on…');
+
+        const portal = document.getElementById('time-portal');
+        if (portal) {
+          portal.setAttribute('visible', 'true');
+          portal.setAttribute('animation__open', 'property: scale; from: 0.05 0.05 0.05; to: 1 1 1; dur: 1450; easing: easeOutElastic');
+          portal.setAttribute('animation__spin', 'property: rotation; to: 0 0 360; dur: 2200; easing: linear');
+        }
+
+        const glass = document.getElementById('mysterious-hourglass');
+        if (glass) {
+          glass.setAttribute('animation__spin', 'property: rotation; to: 0 720 0; dur: 1800; easing: easeInOutQuad');
+        }
+
+        const hourHand = document.getElementById('clock-hour-hand');
+        const minHand = document.getElementById('clock-minute-hand');
+        if (hourHand) hourHand.setAttribute('animation__rev', 'property: rotation; to: 0 0 -1440; dur: 1700; easing: linear');
+        if (minHand) minHand.setAttribute('animation__rev', 'property: rotation; to: 0 0 -1440; dur: 1700; easing: linear');
+
+        fadeTransition(() => {
+          const presentWorld = document.getElementById('present-world');
+          const villageWorld = document.getElementById('village-world');
+          const sky = document.getElementById('prototype-sky');
+          const camera = document.getElementById('player-camera');
+
+          if (presentWorld) presentWorld.setAttribute('visible', 'false');
+          if (villageWorld) villageWorld.setAttribute('visible', 'true');
+          if (sky) sky.setAttribute('color', '#b56d55');
+          if (camera) {
+            camera.setAttribute('position', '0 1.6 4');
+            camera.setAttribute('rotation', '0 0 0');
+          }
+
+          GameState.phase = 'village';
+          setStory('WELCOME TO ELDORIA', 'Aarav wakes in a strange medieval village. A villager approaches him.', 'Find the farmer near the village square.');
+          showToast('You have travelled to the past!', '✨');
+          updateHUD();
+        }, 1750);
+      }
+
+      /* ── Scene 2: Farmer & Apple Quest ── */
+      function talkToFarmer() {
+        if (GameState.phase === 'present' || GameState.phase === 'travelling') return;
+
+        if (!GameState.questAccepted) {
+          GameState.questAccepted = true;
+          GameState.phase = 'quest';
+          setStory('THE FARMER’S REQUEST', 'Farmer: “Stranger, three apples have fallen around my orchard. Please collect all three and bring them back.”', 'Quest objective: Collect 3 apples around the village.');
+          showToast('Quest accepted: The Farmer’s Request', '📜');
+          updateHUD();
+          return;
+        }
+
+        if (GameState.applesCollected < APPLE_COUNT) {
+          const remaining = APPLE_COUNT - GameState.applesCollected;
+          setStory('THE FARMER', `Farmer: “Thank you for helping. I still need ${remaining} more apple${remaining === 1 ? '' : 's'}.”`, `Progress: ${GameState.applesCollected}/${APPLE_COUNT}`);
+          showToast(`${remaining} apple${remaining === 1 ? '' : 's'} left`, '🍎');
+          return;
+        }
+
+        completeAppleQuest();
+      }
+
+      function collectApple(id) {
+        if (!GameState.questAccepted) {
+          showToast('Talk to the farmer before collecting apples.', '👨‍🌾');
+          return;
+        }
+        if (GameState.questCompleted) return;
+
+        const apple = document.getElementById(id);
+        if (!apple || apple.getAttribute('data-collected') === 'true') return;
+
+        apple.setAttribute('data-collected', 'true');
+        apple.setAttribute('visible', 'false');
+        apple.classList.remove('interactive');
+        GameState.applesCollected = Math.min(APPLE_COUNT, GameState.applesCollected + 1);
+
+        updateHUD();
+        if (GameState.applesCollected < APPLE_COUNT) {
+          showToast(`Apple collected! ${GameState.applesCollected}/${APPLE_COUNT}`, '🍎');
+          setStory('APPLE COLLECTED', `You found an apple. ${GameState.applesCollected} of ${APPLE_COUNT} collected.`, 'Find the remaining apples in the orchard.');
+        } else {
+          showToast('All three apples collected! Return to the farmer.', '✅');
+          setStory('ALL APPLES FOUND', 'You have collected all three apples.', 'Return to the farmer to finish the quest.');
+        }
+      }
+
+      function completeAppleQuest() {
+        if (GameState.questCompleted || GameState.rewardPaid) return;
+
+        GameState.questCompleted = true;
+        GameState.rewardPaid = true;
+        GameState.phase = 'completed';
+        GameState.gold += QUEST_REWARD;
+        updateHUD();
+
+        setStory('QUEST COMPLETE', 'Farmer: “Thank you for helping our village. Please accept these 30 gold coins.”', `REWARD: +${QUEST_REWARD} GOLD  •  TOTAL: ${GameState.gold} GOLD`);
+        showToast(`Quest completed! +${QUEST_REWARD} gold`, '🏅');
+
+        const farmer = document.getElementById('farmer-npc');
+        if (farmer) {
+          farmer.setAttribute('animation__celebrate', 'property: rotation; to: 0 12 0; dur: 220; dir: alternate; loop: 4');
+        }
+      }
+
+      /* ── Interaction Dispatcher ── */
+      function dispatchAction(action, itemId) {
+        switch (action) {
+          case 'activate-hourglass': activateHourglass(); break;
+          case 'talk-farmer':        talkToFarmer();      break;
+          case 'collect-apple':      collectApple(itemId); break;
+          default:                   console.warn('Unknown action:', action);
+        }
+      }
+
+      function bindInteractions() {
+        // Crosshair hover and click events
+        const crosshair = document.getElementById('crosshair');
+
+        document.querySelectorAll('.interactive').forEach(el => {
+          el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const action = el.getAttribute('data-action');
+            const itemId = el.getAttribute('data-apple-id');
+            if (action) dispatchAction(action, itemId);
+          });
+
+          el.addEventListener('mouseenter', () => {
+            if (crosshair) crosshair.classList.add('hover');
+          });
+
+          el.addEventListener('mouseleave', () => {
+            if (crosshair) crosshair.classList.remove('hover');
+          });
+        });
+
+        // VR Controllers triggerdown
+        ['left-ctrl', 'right-ctrl'].forEach(id => {
+          const ctrl = document.getElementById(id);
+          if (!ctrl) return;
+          ctrl.addEventListener('triggerdown', () => {
+            const raycaster = ctrl.components && ctrl.components.raycaster;
+            const hit = raycaster && raycaster.intersections && raycaster.intersections[0];
+            if (hit && hit.object && hit.object.el) {
+              const target = hit.object.el;
+              const action = target.getAttribute('data-action');
+              const itemId = target.getAttribute('data-apple-id');
+              if (action) dispatchAction(action, itemId);
+            }
+          });
+        });
+
+        // VR Gaze enter / exit
+        const scene = document.querySelector('a-scene');
+        const gaze = document.getElementById('prototype-gaze');
+        if (scene && gaze) {
+          scene.addEventListener('enter-vr', () => gaze.setAttribute('visible', 'true'));
+          scene.addEventListener('exit-vr', () => gaze.setAttribute('visible', 'false'));
+        }
+      }
+
+      /* ── Scene Boot ── */
+      function initGame() {
+        bindInteractions();
+        updateHUD();
+
+        // Dismiss loading screen
+        const ls = document.getElementById('loading-screen');
+        if (ls) {
+          setTimeout(() => {
+            ls.style.opacity = '0';
+            setTimeout(() => ls.remove(), 600);
+          }, 800);
+        }
+
+        console.log('[THE LAST HOURGLASS] Prototype ready.');
+      }
+
+      const scene = document.querySelector('a-scene');
+      if (scene) {
+        if (scene.hasLoaded) initGame();
+        else scene.addEventListener('loaded', initGame, { once: true });
+      } else {
+        document.addEventListener('DOMContentLoaded', initGame);
+      }
+    })();
+  </script>
+</body>
+</html>
